@@ -1,0 +1,24 @@
+{
+    "enabled": {
+        "cpu":   true,
+        "ram":   true,
+        "net":   true,
+        "fans":  true,
+        "disks": true
+    },
+
+    "setts":{
+        "mode": "html",  // Может быть api/html с соответствующими режимами
+        "update": 2.0,
+        "logs":   false, // в разработке
+        "ip":     "0.0.0.0",
+        "port":   4444
+    },
+
+
+    "path":{
+        "htmD":  "./htms",
+        "mainP": "./htms/default.htm"
+    }
+    
+}

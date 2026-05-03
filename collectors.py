@@ -25,7 +25,7 @@ class collector:
     def run(self):
         while True:                                    
             if datetime.now()>self._lastRun+timedelta(seconds = self._freq):
-                self._lastRun = self._lastRun
+                self._lastRun = datetime.now()
                 self.dataD = self.GetData()
                 #debug(self.dataD)
             time.sleep(0.5)
