@@ -19,14 +19,16 @@ class collector:
         self._lastRun = datetime.now()
         self._freq    = NewFrequency
         self.data     = self.GetNames()
-        self.dataD    = self.GetData()
-
+        self.dataJ    = self.GetData()
+        self.dataH    = self.RenderForHtml()
 
     def run(self):
         while True:                                    
             if datetime.now()>self._lastRun+timedelta(seconds = self._freq):
                 self._lastRun = datetime.now()
-                self.dataD = self.GetData()
+                self.dataJ = self.GetData()
+                self.dataH = self.RenderForHtml()
+
                 #debug(self.dataD)
             time.sleep(0.5)
     
@@ -37,8 +39,11 @@ class collector:
         return None
 
     def returnData(self): 
-        return self.dataD
-
+        return self.dataJ
+    def returnHTML(self):
+        return self.dataH
+    def RenderForHtml(self): 
+        pass
 class RamCollector(collector):
 
     def readTemplate(self):
@@ -50,16 +55,29 @@ class RamCollector(collector):
         # Init SWAP and Memory
         dataRAM = psu.virtual_memory()
         dataSwap = psu.swap_memory()
-        res = self.RAMItem
-        res = res.replace("#RAMTotal#" ,"{:,.2f} Gb".format(self.bfG(dataRAM.total )))
-        res = res.replace("#RAMUsed#"  ,"{:,.2f} Gb".format(self.bfG(dataRAM.used  )))
-        res = res.replace("#RAMFree#"  ,"{:,.2f} Gb".format(self.bfG(dataRAM.free  )))
-        res = res.replace("#SWAPTotal#","{:,.2f} Gb".format(self.bfG(dataSwap.total)))
-        res = res.replace("#SWAPUsed#" ,"{:,.2f} Gb".format(self.bfG(dataSwap.used )))
-        res = res.replace("#SWAPFree#" ,"{:,.2f} Gb".format(self.bfG(dataSwap.free )))
+        return {
+            "RAM": {
+                "total":  self.bfG(dataRAM.total),
+                "used":   self.bfG(dataRAM.used),
+                "free":   self.bfG(dataRAM.free),
+                },
+            "SWAP": {
+                "total": self.bfG(dataSwap.total),
+                "used":  self.bfG(dataSwap.used),
+                "free":  self.bfG(dataSwap.free)
+                }
+            }
         #Returned info
-        return res
-            
+        
+    def RenderForHtml(self):
+        res = self.RAMItem
+        res = res.replace("#RAMTotal#" ,"{:,.2f} Gb".format(self.dataJ["RAM"] ["total"]))
+        res = res.replace("#RAMUsed#"  ,"{:,.2f} Gb".format(self.dataJ["RAM"] ["used"] ))
+        res = res.replace("#RAMFree#"  ,"{:,.2f} Gb".format(self.dataJ["RAM"] ["free"] ))
+        res = res.replace("#SWAPTotal#","{:,.2f} Gb".format(self.dataJ["SWAP"]["total"]))
+        res = res.replace("#SWAPUsed#" ,"{:,.2f} Gb".format(self.dataJ["SWAP"]["used"] ))
+        res = res.replace("#SWAPFree#" ,"{:,.2f} Gb".format(self.dataJ["SWAP"]["free"] )) 
+        return res 
 class CPUCollector(collector):
 
     def readTemplate(self):
@@ -86,17 +104,30 @@ class CPUCollector(collector):
            
             except Exception: # If core not working in this commands
                 continue
- 
-            self.cpuItem=self.cpuItem.replace("#CPUName#",name)
-            self.cpuItem=self.cpuItem.replace("#CPUTemp#",str(temps))
-            cpuCoresInfo = ""
-            for i in range(len(precents)):
-                localData = self.cpuItem2
-                localData = localData.replace("#CPUCoreIndex#", f"{i}")
-                localData = localData.replace('#CPUCoreFreq#', str(freq[i]//1000))
-                localData = localData.replace('#CPUCorePrecent#', str(precents[i])) 
-                cpuCoresInfo +=  localData
-            result = self.cpuItem.replace("##CPUCoresInfo##", cpuCoresInfo)
+        result = {
+            "name": name,
+            "temp": temps,
+            "cores": [
+                {
+                    "core":    i,
+                    "freq":    freq[i]//1000,
+                    "percent": precents[i]
+
+                } for i in range(len(precents))]
+        }
+        return result
+    def RenderForHtml(self):
+
+        self.cpuItem=self.cpuItem.replace("#CPUName#",self.dataJ["name"])
+        self.cpuItem=self.cpuItem.replace("#CPUTemp#",str(self.dataJ["temp"]))
+        cpuCoresInfo = ""
+        for i in range(len(self.dataJ['cores'])):
+            localData = self.cpuItem2
+            localData = localData.replace("#CPUCoreIndex#", f"{i}")
+            localData = localData.replace('#CPUCoreFreq#', str(self.dataJ["cores"][i]["freq"]//1000))
+            localData = localData.replace('#CPUCorePrecent#', str(self.dataJ["cores"][i]["percent"])) 
+            cpuCoresInfo +=  localData
+        result = self.cpuItem.replace("##CPUCoresInfo##", cpuCoresInfo)
 
         return result
 
@@ -122,26 +153,27 @@ class NetCollector(collector):
                     addr[iface] = snic.address
         
 
-        # return { k: 
-        #     {
-        #         "addr":        addr[k],
-        #         "speedInput":  (data2[k][0]- data1[k][0]), 
-        #         "speedOutput": (data2[k][1]- data1[k][1]),
-        #         "sent":        (data2[k][0]),
-        #         'recv':        (data2[k][1])
+        return { k: 
+            {
+                "addr":        addr[k],
+                "speedInput":  self.bfM(data2[k][0]- data1[k][0]), 
+                "speedOutput": self.bfM(data2[k][1]- data1[k][1]),
+                "sent":        self.bfM(data2[k][0]),
+                'recv':        self.bfM(data2[k][1])
 
-        #     } for k,v in data2.items()
+            } for k,v in data2.items()
 
-        # }
+        }
+    def RenderForHtml(self):
         netIntstr = ""
-        for k,v in data2.items():
+        for k,v in self.dataJ.items():
             sh = self.netItem2
-            sh = sh.replace("#interfaceName#", k                       )
-            sh = sh.replace("#IPAddr#",   addr[k]                      )
-            sh = sh.replace("#speedOut#", str(self.bfM(data2[k][1]- data1[k][1])))
-            sh = sh.replace("#speedInp#", str(self.bfM(data2[k][0]- data1[k][0])))
-            sh = sh.replace("#recv#",     str(self.bfM(data2[k][1]))             )
-            sh = sh.replace("#sent#",     str(self.bfM(data2[k][0]))             )
+            sh = sh.replace("#interfaceName#", k            )
+            sh = sh.replace("#IPAddr#",   v["addr"]         )
+            sh = sh.replace("#speedOut#", str(v["speedOutput"]))
+            sh = sh.replace("#speedInp#", str(v["speedInput"]))
+            sh = sh.replace("#recv#",     str(v["sent"])    )
+            sh = sh.replace("#sent#",     str(v["recv"])    )
             netIntstr += sh
 
         result = self.netItem1.replace("##NetInterfaces##", netIntstr)
@@ -178,11 +210,11 @@ class DisksCollector(collector):
                             "free":     (j.free)
                             }
         return results
-    def returnData(self):
+    def RenderForHtml(self):
         result = self.diskItem1
 
         disksData = ""
-        for k,v in self.dataD.items():
+        for k,v in self.dataJ.items():
             sh = self.diskItem2
             sh = sh.replace("#diskName#"  , str(k)                         )
             sh = sh.replace("#TotalStore#", "{:,.2f} Gb".format(self.bfG(v["total"]        )))
@@ -209,19 +241,26 @@ class FansCollector(collector):
         data = psu.sensors_fans()
 
         fans = {}
+        result = {}
+        for k,v in data.items():
+            result[k] = [i.current for i in v]
+
+        return result
+    def RenderForHtml(self):
+        fans_data = self.dataJ
         result = self.fanItem1
         dataFans = ""
-        for k,v in data.items():
-            
-            if len(v) > 1 :
-                for i, j in enumerate(v):
-                    fans[f"{k} {i}"] = v[i].current
-            else: fans[k] = v[0].current
-        for k,v in fans.items():
-            sh = self.fanItem2
-            sh = sh.replace("#fansIndex#", k)
-            sh = sh.replace("#fanSpeed#", "{:,.0f} RPM".format(v).replace(",","&nbsp;"))
-            dataFans += sh
-        result = result.replace("##FansSpeedInfo##", dataFans)
+        for k, speeds in fans_data.items():
+            if len(speeds) > 1:
+                for i, speed in enumerate(speeds):
+                    fan_name = f"{k} {i}"
+                    sh = self.fanItem2.replace("#fansIndex#", fan_name)
+                    sh = sh.replace("#fanSpeed#", "{:,.0f} RPM".format(speed).replace(",", "&nbsp;"))
+                    dataFans += sh
+            else:
+                sh = self.fanItem2.replace("#fansIndex#", k)
+                sh = sh.replace("#fanSpeed#", "{:,.0f} RPM".format(speeds[0]).replace(",", "&nbsp;"))
+                dataFans += sh
+        return result.replace("##FansSpeedInfo##", dataFans)
         
         return result

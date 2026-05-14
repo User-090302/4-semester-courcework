@@ -1,6 +1,7 @@
 import threading
 from threadWork import threadWork
 import web 
+from flask import Flask, jsonify, request
 import collectors 
 import json5
 
@@ -14,8 +15,12 @@ MODE   = info['setts']['mode']
 
 
 class WebServer(web.WebServer):
-    def returnData(self, Collector):
+    
+    def returnHtmlData(self, Collector):
+        if Collector != None: return Collector.returnHTML()
+    def returnApiData(self, Collector):
         if Collector != None: return Collector.returnData()
+
     def service(self, arr = []):
         THRWork = threadWork()
         
@@ -25,24 +30,29 @@ class WebServer(web.WebServer):
     def _setup_routes(self):
         self.mainPage = web.loadHtml(info['path']['mainP'])
         
-        @self.app.route('/')
+        @self.app.route('/page')
         def homePage():
             li =   ""
             for i in self.arr:
-                li +=  self.returnData(i)
+                li +=  self.returnHtmlData(i)
             
             return self.mainPage.replace("%items%", li)
+        @self.app.route("/api/v.0.1.2/stats")
+        def returnAllData():
+            result = {}
+            for i in self.arr:
+                if i is None: continue
+                name = i.__class__.__name__.replace('Collector', '').lower()
+                result[name] = i.returnData()
+            return jsonify(result)
 
 class core:
     def __init__(self):
         self.__loadInfo()
 
-        match MODE:
-            case 'api':
-                print("ОШИБКА: отдел в разработке")
-            case 'html':
-                self.work = WebServer(host=HOST, port=PORT)
-                self.work.service(self.mainInfo)
+    
+        self.work = WebServer(host=HOST, port=PORT)
+        self.work.service(self.mainInfo)
 
 
     def __loadInfo(self):

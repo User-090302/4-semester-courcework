@@ -19,6 +19,16 @@
     "path":{
         "htmD":  "./htms",
         "mainP": "./htms/default.htm"
+    },
+    "grafics":{
+        "cpu":   true,
+        "ram":   true,
+        "net":   true,
+        "fans":  true,
+        "disks": true,
+        
+        "numPoints": 10
+    
     }
     
 }

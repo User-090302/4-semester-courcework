@@ -20,12 +20,12 @@ apt install python-psutil python-flask
 ```
 
 #### RHEL*:
-```
+```bash
 dnf install python-psutil python-flask
 ```
 
 #### Arch*:
-```
+```bash
 pacman -S python-psutil python-flask
 ```
 
@@ -33,7 +33,7 @@ pacman -S python-psutil python-flask
 
 Для запуска веб-сервера выполнить:
 ```bash
-python3 core.py
+python3 webserver.py
 ```
 
 По умолчанию интерфейс доступен по адресу http://localhost:4444. Интерфейс демонстрирует базовые метрики системы: загрузку процессора, использование памяти и простые графики.
