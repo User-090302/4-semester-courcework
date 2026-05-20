@@ -18,10 +18,11 @@ class collector:
         self.readTemplate()
         self._lastRun = datetime.now()
         self._freq    = NewFrequency
-        self.data     = self.GetNames()
-        self.dataJ    = self.GetData()
-        self.dataH    = self.RenderForHtml()
-
+        try:
+            self.data     = self.GetNames()
+            self.dataJ    = self.GetData()
+            self.dataH    = self.RenderForHtml()
+        except Exception as e: print(e)
     def run(self):
         while True:                                    
             if datetime.now()>self._lastRun+timedelta(seconds = self._freq):
